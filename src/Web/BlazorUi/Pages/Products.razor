@@ -1,0 +1,137 @@
+@page "/products"
+@using BlazorUi.Services
+@using Shared.Contracts
+@using Shared.Contracts.Models
+@inject ProductApiClient ReadClient
+@inject ProductCommandClient WriteClient
+
+<PageTitle>Products - CQRS System Design PoC</PageTitle>
+
+<h3>Product Management (CQRS Demo)</h3>
+
+<div class="row mt-4">
+    <!-- Command Form (Write API) -->
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">Add Product (Write API)</div>
+            <div class="card-body">
+                <EditForm Model="newProduct" OnValidSubmit="HandleCreate">
+                    <DataAnnotationsValidator />
+                    <div class="mb-3">
+                        <label class="form-label">Name</label>
+                        <InputText @bind-Value="newProduct.Name" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <InputText @bind-Value="newProduct.Description" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Price</label>
+                        <InputNumber @bind-Value="newProduct.Price" class="form-control" step="0.01" required />
+                    </div>
+                    <button type="submit" class="btn btn-success w-100" disabled="@isSubmitting">
+                        @if (isSubmitting) { <span>Publishing Command...</span> } else { <span>Submit Command</span> }
+                    </button>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+
+    <!-- Query View (Read API) -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                <span>Product Catalog (Read API - Mongo)</span>
+                <button class="btn btn-sm btn-outline-light" @onclick="LoadProducts">Refresh</button>
+            </div>
+            <div class="card-body">
+                @if (products is null)
+                {
+                    <p>Loading read models...</p>
+                }
+                else if (products.Count == 0)
+                {
+                    <p class="text-muted">No products found in Read DB.</p>
+                }
+                else
+                {
+                    <table class="table table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Description</th>
+                                <th>Price</th>
+                                <th>Last Synced</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in products)
+                            {
+                                <tr>
+                                    <td><strong>@item.Name</strong></td>
+                                    <td>@item.Description</td>
+                                    <td>@item.Price.ToString("C")</td>
+                                    <td><small class="text-muted">@item.LastSyncedAtUtc.ToLocalTime().ToString("T")</small></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => HandleDelete(item.Id)">
+                                            Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<ProductReadModel>? products;
+    private CreateProductFormModel newProduct = new();
+    private bool isSubmitting;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProducts();
+    }
+
+    private async Task LoadProducts()
+    {
+        products = await ReadClient.GetProductsAsync();
+    }
+
+    private async Task HandleCreate()
+    {
+        isSubmitting = true;
+        var request = new CreateProductRequest(newProduct.Name, newProduct.Description, newProduct.Price);
+        
+        var success = await WriteClient.CreateProductAsync(request);
+        if (success)
+        {
+            newProduct = new();
+            await Task.Delay(300); // Give RabbitMQ + DataSyncWorker a moment to process event
+            await LoadProducts();
+        }
+        isSubmitting = false;
+    }
+
+    private async Task HandleDelete(Guid id)
+    {
+        var success = await WriteClient.DeleteProductAsync(id);
+        if (success)
+        {
+            await Task.Delay(300);
+            await LoadProducts();
+        }
+    }
+
+    private sealed class CreateProductFormModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public decimal Price { get; set; } = 9.99m;
+    }
+}

@@ -1,0 +1,119 @@
+version: '3.8'
+
+services:
+  # --- INFRASTRUCTURE ---
+  postgres-write:
+    image: postgres:16-alpine
+    container_name: postgres-write
+    environment:
+      POSTGRES_DB: writedb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d writedb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  mongo-read:
+    image: mongo:7.0
+    container_name: mongo-read
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"   # AMQP protocol
+      - "15672:15672" # Management Dashboard
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # --- MICROSERVICES ---
+  write-api:
+    image: write-api:latest
+    build:
+      context: .
+      dockerfile: src/Services/WriteApi/Dockerfile
+    container_name: write-api
+    ports:
+      - "5002:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__WriteDb=Host=postgres-write;Database=writedb;Username=postgres;Password=postgrespassword
+      - RabbitMQ__Host=rabbitmq
+      - RabbitMQ__Username=guest
+      - RabbitMQ__Password=guest
+    depends_on:
+      postgres-write:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  read-api:
+    image: read-api:latest
+    build:
+      context: .
+      dockerfile: src/Services/ReadApi/Dockerfile
+    container_name: read-api
+    ports:
+      - "5001:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__ReadDb=mongodb://mongo-read:27017
+    depends_on:
+      mongo-read:
+        condition: service_healthy
+
+  datasync-worker:
+    image: datasync-worker:latest
+    build:
+      context: .
+      dockerfile: src/Services/DataSyncWorker/Dockerfile
+    container_name: datasync-worker
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - ConnectionStrings__ReadDb=mongodb://mongo-read:27017
+      - RabbitMQ__Host=rabbitmq
+      - RabbitMQ__Username=guest
+      - RabbitMQ__Password=guest
+    depends_on:
+      mongo-read:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  # --- FRONTEND ---
+  blazor-ui:
+    image: blazor-ui:latest
+    build:
+      context: .
+      dockerfile: src/Web/BlazorUi/Dockerfile
+    container_name: blazor-ui
+    ports:
+      - "8080:80"
+    depends_on:
+      - write-api
+      - read-api
+
+volumes:
+  postgres_data:
+  mongo_data:

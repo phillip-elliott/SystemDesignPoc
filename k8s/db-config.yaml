@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+  namespace: default
+data:
+  # Non-sensitive configuration settings
+  POSTGRES_HOST: "postgres"
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: "writedb"
+
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secret
+  namespace: default
+type: Opaque
+stringData:
+  # Sensitive credentials (Kubernetes automatically base64-encodes stringData)
+  POSTGRES_USER: "postgres"
+  POSTGRES_PASSWORD: "postgres"

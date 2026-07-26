@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Services/">
+    <Project Path="src/Services/DataSyncWorker/DataSyncWorker.csproj" />
+    <Project Path="src/Services/ReadApi/ReadApi.csproj" />
+    <Project Path="src/Services/WriteApi/WriteApi.csproj" />
+  </Folder>
+  <Folder Name="/src/Shared/">
+    <Project Path="src/Shared/Shared.Contracts/Shared.Contracts.csproj" />
+  </Folder>
+  <Folder Name="/src/Web/">
+    <Project Path="src/Web/BlazorUi/BlazorUi.csproj" />
+  </Folder>
+</Solution>

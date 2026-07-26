@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: datasync-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: datasync-worker
+  template:
+    metadata:
+      labels:
+        app: datasync-worker
+        role: worker
+    spec:
+      containers:
+      - name: datasync-worker
+        image: datasync-worker:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: ConnectionStrings__ReadDb
+          value: "mongodb://mongodb:27017"
+        - name: RabbitMQ__Host
+          value: "rabbitmq"

@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blazor-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: blazor-ui
+  template:
+    metadata:
+      labels:
+        app: blazor-ui
+    spec:
+      containers:
+      - name: blazor-ui
+        image: blazor-ui:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 80
+        env:
+        # Internal K8s service URLs (server-side calls)
+        - name: Services__WriteApiUrl
+          value: "http://write-api:8080"
+        - name: Services__ReadApiUrl
+          value: "http://read-api:8080"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: blazor-ui
+spec:
+  type: LoadBalancer
+  selector:
+    app: blazor-ui
+  ports:
+  - port: 8080
+    targetPort: 80

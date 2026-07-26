@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: write-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: write-api
+  template:
+    metadata:
+      labels:
+        app: write-api
+        role: api
+    spec:
+      containers:
+      - name: write-api
+        image: write-api:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+        env:
+        # Read non-sensitive values from ConfigMap
+        - name: POSTGRES_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: postgres-config
+              key: POSTGRES_HOST
+        - name: POSTGRES_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: postgres-config
+              key: POSTGRES_PORT
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: postgres-config
+              key: POSTGRES_DB
+
+        # Read sensitive values from Secret
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: POSTGRES_PASSWORD
+
+        - name: ConnectionStrings__WriteDb
+          value: "Host=$(POSTGRES_HOST);Port=$(POSTGRES_PORT);Database=$(POSTGRES_DB);Username=$(POSTGRES_USER);Password=$(POSTGRES_PASSWORD)"
+        - name: RabbitMQ__Host
+          value: "rabbitmq"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: write-api
+spec:
+  type: NodePort
+  selector:
+    app: write-api
+  ports:
+  - port: 8080
+    targetPort: 8080
+    nodePort: 30080 # Exposes Write API on http://localhost:30080

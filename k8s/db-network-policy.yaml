@@ -1,0 +1,35 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: restrict-db-access
+  namespace: default # Adjust if you use a specific namespace (e.g., system-poc)
+spec:
+  # 1. Target Pods: Apply this policy to both PostgreSQL and MongoDB pods
+  podSelector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values:
+          - postgres
+          - mongodb
+
+  policyTypes:
+    - Ingress # Restrict incoming traffic to the databases
+
+  ingress:
+    # 2. Allowed Sources: Only allow pods labeled with role=api
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: role
+                operator: In
+                values:
+                  - api
+                  - worker
+      
+      # 3. Target Ports: Standard ports for PostgreSQL and MongoDB
+      ports:
+        - protocol: TCP
+          port: 5432 # PostgreSQL
+        - protocol: TCP
+          port: 27017 # MongoDB
