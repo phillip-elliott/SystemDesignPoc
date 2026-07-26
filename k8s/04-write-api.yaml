@@ -16,7 +16,7 @@ spec:
       containers:
       - name: write-api
         image: write-api:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         ports:
         - containerPort: 8080
         env:
@@ -53,6 +53,18 @@ spec:
           value: "Host=$(POSTGRES_HOST);Port=$(POSTGRES_PORT);Database=$(POSTGRES_DB);Username=$(POSTGRES_USER);Password=$(POSTGRES_PASSWORD)"
         - name: RabbitMQ__Host
           value: "rabbitmq"
+
+        # OpenTelemetry standard configuration
+        - name: OTEL_SERVICE_NAME
+          value: "write-api"
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://aspire-dashboard-service:4317"
+        - name: OTEL_EXPORTER_OTLP_PROTOCOL
+          value: "grpc"
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_LOG_LEVEL
+          value: "debug"
 ---
 apiVersion: v1
 kind: Service

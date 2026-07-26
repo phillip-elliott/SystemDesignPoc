@@ -16,12 +16,24 @@ spec:
       containers:
       - name: read-api
         image: read-api:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         ports:
         - containerPort: 8080
         env:
         - name: ConnectionStrings__ReadDb
           value: "mongodb://mongodb:27017"
+
+        # OpenTelemetry standard configuration
+        - name: OTEL_SERVICE_NAME
+          value: "read-api"
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://aspire-dashboard-service:4317"
+        - name: OTEL_EXPORTER_OTLP_PROTOCOL
+          value: "grpc"
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_LOG_LEVEL
+          value: "debug"
 ---
 apiVersion: v1
 kind: Service

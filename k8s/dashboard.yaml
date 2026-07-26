@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aspire-dashboard
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aspire-dashboard
+  template:
+    metadata:
+      labels:
+        app: aspire-dashboard
+    spec:
+      containers:
+        - name: aspire-dashboard
+          image: mcr.microsoft.com/dotnet/aspire-dashboard:8.0
+          ports:
+            - containerPort: 18888 # Web Dashboard UI
+            - containerPort: 4317  # OTLP gRPC ingest port
+          env:
+            # Tells Aspire Dashboard to listen for incoming OTLP gRPC telemetry on 0.0.0.0:4317
+            - name: DOTNET_DASHBOARD_OTLP_ENDPOINT_URL
+              value: "http://0.0.0.0:4317"
+            
+            # Allows unsecured OTLP ingestion over HTTP/gRPC without API keys
+            - name: ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS
+              value: "true"
+            - name: DOTNET_DASHBOARD_UNAUTHENTICATED_ALLOW_ANONYMOUS
+              value: "true"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aspire-dashboard-service
+  namespace: default
+spec:
+  selector:
+    app: aspire-dashboard
+  ports:
+    - name: ui
+      port: 18888
+      targetPort: 18888
+    - name: otlp
+      port: 4317
+      targetPort: 4317

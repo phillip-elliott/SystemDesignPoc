@@ -15,7 +15,7 @@ spec:
       containers:
       - name: blazor-ui
         image: blazor-ui:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         ports:
         - containerPort: 80
         env:

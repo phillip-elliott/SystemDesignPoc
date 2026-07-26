@@ -1,12 +1,21 @@
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
+using OpenTelemetry;
+using OpenTelemetry.Logs;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Shared.Contracts;
 using WriteApi.Data;
 using WriteApi.Domain;
 
+var otelDiagnostics = new OTelEventListener();
 var builder = WebApplication.CreateBuilder(args);
 
-// Add API Explorer / Swagger
+var serviceName = "write-api";
+var serviceVersion = "1.0.0";
+
+// Add API Explorer
 builder.Services.AddEndpointsApiExplorer();
 
 // 1. Configure EF Core with PostgreSQL
@@ -36,6 +45,32 @@ builder.Services.AddMassTransit(x =>
 
         cfg.ConfigureEndpoints(context);
     });
+});
+
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource
+        .AddService(serviceName: serviceName, serviceVersion: serviceVersion))
+    .UseOtlpExporter()
+    .WithTracing(tracing =>
+    {
+        tracing
+            .AddAspNetCoreInstrumentation() // Captures incoming HTTP requests
+            .AddHttpClientInstrumentation() // Captures outgoing HTTP calls
+            .AddEntityFrameworkCoreInstrumentation(); // Captures EF Core SQL queries
+    })
+    .WithMetrics(metrics =>
+    {
+        metrics
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddRuntimeInstrumentation(); // CPU, Memory, GC metrics
+    });
+
+builder.Logging.AddConsole();
+builder.Logging.AddOpenTelemetry(options =>
+{
+    options.IncludeFormattedMessage = true;
+    options.IncludeScopes = true;
 });
 
 var app = builder.Build();
