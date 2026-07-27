@@ -30,7 +30,7 @@ kind: Service
 metadata:
   name: blazor-ui
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     app: blazor-ui
   ports:

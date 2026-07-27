@@ -1,0 +1,45 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-app-ingress
+  annotations:
+    # Rewrites the incoming request path using capture group $1
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: localhost
+      http:
+        paths:
+          # 1. Read API Route
+          # Input:  http://localhost/api/read/api/products
+          # Result: /api/products -> sent to read-api
+          - path: /api/read/(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: read-api
+                port:
+                  number: 8080
+
+          # 2. Write API Route
+          # Input:  http://localhost/api/write/api/products
+          # Result: /api/products -> sent to write-api
+          - path: /api/write/(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: write-api
+                port:
+                  number: 8080
+
+          # 3. Blazor UI Route
+          # Input:  http://localhost/ui or http://localhost/ui/index.html
+          # Result: / or /index.html -> sent to blazor-ui
+          - path: /ui/?(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: blazor-ui
+                port:
+                  number: 8080
